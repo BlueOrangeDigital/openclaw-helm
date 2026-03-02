@@ -74,6 +74,59 @@ async def store_connection(
     return connection
 
 
+def create_channel(
+    bot_token: str,
+    channel_name: str,
+) -> dict[str, Any] | None:
+    """Create a new Slack channel and return its info, or return existing if name is taken."""
+    try:
+        client = WebClient(token=bot_token)
+        response = client.conversations_create(name=channel_name)
+        channel = response.data.get("channel", {}) if response.data else {}
+        logger.info(
+            "slack.channel.created",
+            extra={"channel_id": channel.get("id"), "channel_name": channel_name},
+        )
+        return {"id": channel.get("id", ""), "name": channel.get("name", channel_name)}
+    except SlackApiError as exc:
+        if exc.response.get("error") == "name_taken":
+            # Channel already exists — find it and return it
+            logger.info(
+                "slack.channel.already_exists",
+                extra={"channel_name": channel_name},
+            )
+            try:
+                existing = _find_channel_by_name(client, channel_name)
+                if existing:
+                    return existing
+            except SlackApiError:
+                pass
+        logger.error(
+            "slack.channel.create_failed",
+            extra={"channel_name": channel_name, "error": str(exc)},
+        )
+        return None
+
+
+def _find_channel_by_name(client: WebClient, name: str) -> dict[str, Any] | None:
+    """Find a channel by exact name."""
+    cursor = None
+    while True:
+        response = client.conversations_list(
+            types="public_channel,private_channel",
+            limit=200,
+            cursor=cursor,
+        )
+        data = response.data if response.data else {}
+        for ch in data.get("channels", []):
+            if ch.get("name") == name:
+                return {"id": ch["id"], "name": ch["name"]}
+        cursor = data.get("response_metadata", {}).get("next_cursor")
+        if not cursor:
+            break
+    return None
+
+
 async def get_connection(
     session: AsyncSession,
     board_id: UUID,

@@ -10,11 +10,16 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 
+import re
+
+from sqlmodel import col
+
 from app.api.deps import get_board_for_user_read, get_board_for_user_write
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.time import utcnow
 from app.db.session import get_session
+from app.models.agents import Agent
 from app.schemas.common import OkResponse
 from app.schemas.slack import (
     SlackChannelInfo,
@@ -84,7 +89,7 @@ async def slack_oauth_authorize(
     _slack_configured()
 
     state = _build_state_token(board_id)
-    scopes = "channels:history,channels:read,chat:write,groups:history,groups:read,users:read"
+    scopes = "channels:history,channels:manage,channels:read,chat:write,groups:history,groups:read,users:read"
     redirect_uri = settings.slack_oauth_redirect_uri
     if not redirect_uri:
         base = settings.base_url.rstrip("/")
@@ -149,17 +154,41 @@ async def slack_oauth_callback(
         await session.delete(existing)
         await session.flush()
 
-    # Store with a placeholder channel — user selects channel in next step
-    incoming_webhook = oauth_response.get("incoming_webhook", {})
-    default_channel_id = incoming_webhook.get("channel_id", "")
-    default_channel_name = incoming_webhook.get("channel", "")
+    # Auto-create a Slack channel named after the board lead (e.g. "ava-helm")
+    bot_token = oauth_response.get("access_token", "")
+    channel_id = ""
+    channel_name = ""
+
+    lead = (
+        await Agent.objects.filter_by(board_id=board_id)
+        .filter(col(Agent.is_board_lead).is_(True))
+        .first(session)
+    )
+    if lead and bot_token:
+        # Slack channel names: lowercase, no spaces, max 80 chars
+        slug = re.sub(r"[^a-z0-9-]", "", lead.name.lower().replace(" ", "-"))
+        desired_name = f"{slug}-helm"[:80]
+        created = slack_service.create_channel(bot_token, desired_name)
+        if created:
+            channel_id = created["id"]
+            channel_name = created["name"]
+            logger.info(
+                "slack.oauth.auto_channel",
+                extra={"board_id": str(board_id), "channel": channel_name},
+            )
+
+    # Fall back to incoming webhook channel if auto-create didn't work
+    if not channel_id:
+        incoming_webhook = oauth_response.get("incoming_webhook", {})
+        channel_id = incoming_webhook.get("channel_id", "")
+        channel_name = incoming_webhook.get("channel", "")
 
     await slack_service.store_connection(
         session,
         board_id=board_id,
         oauth_response=oauth_response,
-        channel_id=default_channel_id,
-        channel_name=default_channel_name,
+        channel_id=channel_id,
+        channel_name=channel_name,
     )
 
     frontend_base = settings.cors_origins.split(",")[0].strip() if settings.cors_origins else ""
