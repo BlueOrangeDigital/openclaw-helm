@@ -475,10 +475,11 @@ async def openclaw_call(
         WebSocketException,
     ) as exc:  # pragma: no cover - network/protocol errors
         logger.error(
-            "gateway.rpc.call.transport_error method=%s duration_ms=%s error_type=%s",
+            "gateway.rpc.call.transport_error method=%s duration_ms=%s error_type=%s error=%s",
             method,
             int((perf_counter() - started_at) * 1000),
             exc.__class__.__name__,
+            str(exc),
         )
         raise OpenClawGatewayError(str(exc)) from exc
 
