@@ -65,7 +65,7 @@ async def _dispatch_slack_message(msg: QueuedSlackMessage) -> None:
             await session.exec(
                 Agent.objects.filter_by(board_id=board_id).filter(
                     col(Agent.is_board_lead).is_(True)
-                )._statement
+                ).statement
             )
         ).first()
 
