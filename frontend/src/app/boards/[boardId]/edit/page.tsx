@@ -44,6 +44,7 @@ import type {
   BoardUpdate,
 } from "@/api/generated/model";
 import { BoardOnboardingChat } from "@/components/BoardOnboardingChat";
+import { BoardSlackSettings } from "@/components/boards/BoardSlackSettings";
 import { DashboardPageLayout } from "@/components/templates/DashboardPageLayout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -1263,6 +1264,10 @@ export default function EditBoardPage() {
               </div>
             </section>
           </form>
+
+          {boardId ? (
+            <BoardSlackSettings boardId={boardId} isAdmin={isAdmin} />
+          ) : null}
         </div>
       </DashboardPageLayout>
       <Dialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen}>

@@ -43,6 +43,13 @@ services:
       AUTH_MODE: ${AUTH_MODE}
       LOCAL_AUTH_TOKEN: ${LOCAL_AUTH_TOKEN}
       RQ_REDIS_URL: redis://redis:6379/0
+      # Slack OAuth integration
+      SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+      SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      SLACK_OAUTH_REDIRECT_URI: ${SLACK_OAUTH_REDIRECT_URI:-}
     depends_on:
       db:
         condition: service_healthy
@@ -91,6 +98,12 @@ services:
       RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-default}
       RQ_DISPATCH_THROTTLE_SECONDS: ${RQ_DISPATCH_THROTTLE_SECONDS:-2.0}
       RQ_DISPATCH_MAX_RETRIES: ${RQ_DISPATCH_MAX_RETRIES:-3}
+      # Slack Socket Mode listener (runs inside webhook-worker)
+      SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+      SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     restart: unless-stopped
 
 volumes:

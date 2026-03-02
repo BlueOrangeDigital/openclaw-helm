@@ -9,6 +9,7 @@ from app.models.board_groups import BoardGroup
 from app.models.board_memory import BoardMemory
 from app.models.board_onboarding import BoardOnboardingSession
 from app.models.board_webhook_payloads import BoardWebhookPayload
+from app.models.board_slack_connection import BoardSlackConnection
 from app.models.board_webhooks import BoardWebhook
 from app.models.boards import Board
 from app.models.gateways import Gateway
@@ -36,6 +37,7 @@ __all__ = [
     "ApprovalTaskLink",
     "Approval",
     "BoardGroupMemory",
+    "BoardSlackConnection",
     "BoardWebhook",
     "BoardWebhookPayload",
     "BoardMemory",

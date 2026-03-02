@@ -15,6 +15,9 @@ from app.services.openclaw.lifecycle_queue import (
 )
 from app.services.openclaw.lifecycle_reconcile import process_lifecycle_queue_task
 from app.services.queue import QueuedTask, dequeue_task
+from app.services.slack.dispatch import process_slack_queue_task
+from app.services.slack.queue import TASK_TYPE as SLACK_TASK_TYPE
+from app.services.slack.queue import requeue_slack_queue_task
 from app.services.webhooks.dispatch import (
     process_webhook_queue_task,
     requeue_webhook_queue_task,
@@ -48,6 +51,14 @@ _TASK_HANDLERS: dict[str, _TaskHandler] = {
             settings.rq_dispatch_retry_max_seconds,
         ),
         requeue=lambda task, delay: requeue_webhook_queue_task(task, delay_seconds=delay),
+    ),
+    SLACK_TASK_TYPE: _TaskHandler(
+        handler=process_slack_queue_task,
+        attempts_to_delay=lambda attempts: min(
+            settings.rq_dispatch_retry_base_seconds * (2 ** max(0, attempts)),
+            settings.rq_dispatch_retry_max_seconds,
+        ),
+        requeue=lambda task, delay: requeue_slack_queue_task(task, delay_seconds=delay),
     ),
 }
 
@@ -146,6 +157,14 @@ def run_worker() -> None:
         "queue.worker.batch_started",
         extra={"throttle_seconds": settings.rq_dispatch_throttle_seconds},
     )
+    # Start Slack Socket Mode listener as a daemon thread (if configured)
+    try:
+        from app.services.slack.socket_listener import start_socket_listener
+
+        start_socket_listener()
+    except Exception:
+        logger.exception("queue.worker.slack_socket_start_failed")
+
     try:
         asyncio.run(_run_worker_loop())
     finally:

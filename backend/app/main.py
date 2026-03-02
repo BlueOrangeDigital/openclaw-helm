@@ -25,6 +25,7 @@ from app.api.gateway import router as gateway_router
 from app.api.gateways import router as gateways_router
 from app.api.metrics import router as metrics_router
 from app.api.organizations import router as organizations_router
+from app.api.slack import router as slack_router
 from app.api.skills_marketplace import router as skills_marketplace_router
 from app.api.souls_directory import router as souls_directory_router
 from app.api.tags import router as tags_router
@@ -127,6 +128,10 @@ OPENAPI_TAGS = [
     {
         "name": "users",
         "description": "User profile read/update operations and user-centric settings endpoints.",
+    },
+    {
+        "name": "slack",
+        "description": "Slack OAuth integration, connection management, and channel sync endpoints.",
     },
     {
         "name": "agent",
@@ -551,6 +556,7 @@ api_v1.include_router(tasks_router)
 api_v1.include_router(task_custom_fields_router)
 api_v1.include_router(tags_router)
 api_v1.include_router(users_router)
+api_v1.include_router(slack_router)
 app.include_router(api_v1)
 
 add_pagination(app)

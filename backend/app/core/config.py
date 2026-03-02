@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     # OpenClaw gateway runtime compatibility
     gateway_min_version: str = "2026.02.9"
 
+    # Slack OAuth integration
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+    slack_signing_secret: str = ""
+    slack_app_token: str = ""
+    encryption_key: str = ""
+    slack_oauth_redirect_uri: str = ""
+
     # Logging
     log_level: str = "INFO"
     log_format: str = "text"

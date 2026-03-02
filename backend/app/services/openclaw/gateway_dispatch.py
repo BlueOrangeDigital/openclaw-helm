@@ -6,7 +6,7 @@ directly orchestrate gateway RPC calls.
 
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.models.boards import Board
 from app.models.gateways import Gateway
@@ -30,6 +30,16 @@ class GatewayDispatchService(OpenClawDBService):
     ) -> GatewayClientConfig | None:
         gateway = await get_gateway_for_board(self.session, board)
         return optional_gateway_client_config(gateway)
+
+    async def optional_gateway_config_for_board_by_id(
+        self,
+        board_id: UUID,
+    ) -> GatewayClientConfig | None:
+        """Resolve gateway config by board ID (for use when Board object is not loaded)."""
+        board = await Board.objects.by_id(board_id).first(self.session)
+        if board is None:
+            return None
+        return await self.optional_gateway_config_for_board(board)
 
     async def require_gateway_config_for_board(
         self,

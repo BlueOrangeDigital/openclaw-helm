@@ -28,6 +28,8 @@ dependencies = [
     "redis==6.3.0",
     "rq==2.6.0",
     "cryptography==45.0.7",
+    "slack_sdk==3.35.0",
+    "PyJWT==2.10.1",
 ]
 
 [project.optional-dependencies]

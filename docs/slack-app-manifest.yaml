@@ -1,0 +1,41 @@
+_metadata:
+  major_version: 2
+  minor_version: 0
+
+display_information:
+  name: Helm by Blue Orange Digital
+  description: Connect Helm boards to Slack channels for bidirectional messaging.
+  long_description: >-
+    Helm by Blue Orange Digital is an AI-powered agent orchestration platform.
+    This Slack integration enables bidirectional messaging between Helm boards
+    and Slack channels — messages in Slack appear in the board, and agent
+    responses post back to Slack.
+  background_color: "#192C47"
+
+features:
+  bot_user:
+    display_name: Helm
+    always_online: true
+
+oauth_config:
+  redirect_urls:
+    - https://helm-api.blueorangedigital.co/api/v1/slack/oauth/callback
+  scopes:
+    bot:
+      - channels:history
+      - channels:read
+      - chat:write
+      - groups:history
+      - groups:read
+      - users:read
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+      - message.groups
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
