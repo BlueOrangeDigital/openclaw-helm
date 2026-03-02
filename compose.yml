@@ -86,7 +86,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: ["python", "-m", "worker_entrypoint", "redis://redis:6379/0"]
+    command: ["python", "-m", "app.worker_entrypoint", "redis://redis:6379/0"]
     env_file:
       - ./backend/.env
     depends_on:
