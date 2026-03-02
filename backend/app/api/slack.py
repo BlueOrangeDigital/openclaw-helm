@@ -89,7 +89,7 @@ async def slack_oauth_authorize(
     _slack_configured()
 
     state = _build_state_token(board_id)
-    scopes = "channels:history,channels:manage,channels:read,chat:write,groups:history,groups:read,users:read"
+    scopes = "channels:history,channels:join,channels:manage,channels:read,chat:write,groups:history,groups:read,users:read"
     redirect_uri = settings.slack_oauth_redirect_uri
     if not redirect_uri:
         base = settings.base_url.rstrip("/")
