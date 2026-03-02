@@ -108,6 +108,10 @@ services:
       SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
       SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      # Share the same device identity as the backend container
+      OPENCLAW_GATEWAY_DEVICE_IDENTITY_PATH: /data/device-identity/device.json
+    volumes:
+      - backend_device_identity:/data/device-identity
     restart: unless-stopped
 
 volumes:
