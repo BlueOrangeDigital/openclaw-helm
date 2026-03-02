@@ -1,7 +1,7 @@
 """Add board_slack_connections table for Slack OAuth integration.
 
 Revision ID: a1b2c3d4e5f6
-Revises: fa6e83f8d9a1
+Revises: f1b2c3d4e5a6
 Create Date: 2026-03-01 00:00:00.000000
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a1b2c3d4e5f6"
-down_revision = "fa6e83f8d9a1"
+down_revision = "f1b2c3d4e5a6"
 branch_labels = None
 depends_on = None
 
