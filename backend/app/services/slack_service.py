@@ -83,14 +83,15 @@ def create_channel(
         client = WebClient(token=bot_token)
         response = client.conversations_create(name=channel_name)
         channel = response.data.get("channel", {}) if response.data else {}
+        channel_id = channel.get("id", "")
         logger.info(
             "slack.channel.created",
-            extra={"channel_id": channel.get("id"), "channel_name": channel_name},
+            extra={"channel_id": channel_id, "channel_name": channel_name},
         )
-        return {"id": channel.get("id", ""), "name": channel.get("name", channel_name)}
+        return {"id": channel_id, "name": channel.get("name", channel_name)}
     except SlackApiError as exc:
         if exc.response.get("error") == "name_taken":
-            # Channel already exists — find it and return it
+            # Channel already exists — find it and join it
             logger.info(
                 "slack.channel.already_exists",
                 extra={"channel_name": channel_name},
@@ -98,6 +99,7 @@ def create_channel(
             try:
                 existing = _find_channel_by_name(client, channel_name)
                 if existing:
+                    _join_channel(client, existing["id"])
                     return existing
             except SlackApiError:
                 pass
@@ -106,6 +108,19 @@ def create_channel(
             extra={"channel_name": channel_name, "error": str(exc)},
         )
         return None
+
+
+def _join_channel(client: WebClient, channel_id: str) -> None:
+    """Join a channel so the bot can post messages."""
+    try:
+        client.conversations_join(channel=channel_id)
+        logger.info("slack.channel.joined", extra={"channel_id": channel_id})
+    except SlackApiError as exc:
+        if exc.response.get("error") != "already_in_channel":
+            logger.warning(
+                "slack.channel.join_failed",
+                extra={"channel_id": channel_id, "error": str(exc)},
+            )
 
 
 def _find_channel_by_name(client: WebClient, name: str) -> dict[str, Any] | None:
@@ -207,6 +222,28 @@ def post_message(
         )
         return dict(response.data) if response.data else None
     except SlackApiError as exc:
+        # Auto-join and retry if bot is not in the channel
+        if exc.response.get("error") == "not_in_channel":
+            try:
+                token = decrypt_token(connection.bot_token_encrypted)
+                client = WebClient(token=token)
+                client.conversations_join(channel=connection.slack_channel_id)
+                response = client.chat_postMessage(
+                    channel=connection.slack_channel_id,
+                    text=text,
+                    thread_ts=thread_ts,
+                )
+                return dict(response.data) if response.data else None
+            except SlackApiError as retry_exc:
+                logger.error(
+                    "slack.post_message.retry_failed",
+                    extra={
+                        "board_id": str(connection.board_id),
+                        "channel_id": connection.slack_channel_id,
+                        "error": str(retry_exc),
+                    },
+                )
+                return None
         logger.error(
             "slack.post_message.failed",
             extra={
