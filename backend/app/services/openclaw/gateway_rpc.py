@@ -340,15 +340,17 @@ def _build_connect_params(
             "mode": CONTROL_UI_CLIENT_MODE if use_control_ui else DEFAULT_GATEWAY_CLIENT_MODE,
         },
     }
-    if not use_control_ui:
-        params["device"] = _build_device_connect_payload(
-            client_id=DEFAULT_GATEWAY_CLIENT_ID,
-            client_mode=DEFAULT_GATEWAY_CLIENT_MODE,
-            role=role,
-            scopes=scopes,
-            auth_token=config.token,
-            connect_nonce=connect_nonce,
-        )
+    # Always include device identity — the gateway requires it for
+    # connections that don't arrive over HTTPS or localhost (e.g. via
+    # Cloudflare Tunnel which terminates TLS before reaching the gateway).
+    params["device"] = _build_device_connect_payload(
+        client_id=CONTROL_UI_CLIENT_ID if use_control_ui else DEFAULT_GATEWAY_CLIENT_ID,
+        client_mode=CONTROL_UI_CLIENT_MODE if use_control_ui else DEFAULT_GATEWAY_CLIENT_MODE,
+        role=role,
+        scopes=scopes,
+        auth_token=config.token,
+        connect_nonce=connect_nonce,
+    )
     if config.token:
         params["auth"] = {"token": config.token}
     return params
