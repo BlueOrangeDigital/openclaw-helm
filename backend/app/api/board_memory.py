@@ -20,6 +20,7 @@ from app.api.deps import (
     require_admin_or_agent,
 )
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.core.time import utcnow
 from app.db.pagination import paginate
 from app.db.session import async_session_maker, get_session
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 
     from app.models.boards import Board
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/boards/{board_id}/memory", tags=["board-memory"])
 MAX_SNIPPET_LENGTH = 800
 STREAM_POLL_SECONDS = 2
@@ -159,10 +161,12 @@ async def _notify_chat_targets(
     actor: ActorContext,
 ) -> None:
     if not memory.content:
+        logger.warning("notify_chat: empty content, skipping")
         return
     dispatch = GatewayDispatchService(session)
     config = await dispatch.optional_gateway_config_for_board(board)
     if config is None:
+        logger.warning("notify_chat: no gateway config for board %s", board.id)
         return
 
     normalized = memory.content.strip()
@@ -181,12 +185,21 @@ async def _notify_chat_targets(
         return
 
     mentions = extract_mentions(memory.content)
+    agents = await Agent.objects.filter_by(board_id=board.id).all(session)
+    logger.info(
+        "notify_chat: board=%s agents=%s mentions=%s actor_type=%s",
+        board.id,
+        [(a.name, a.is_board_lead, a.openclaw_session_id) for a in agents],
+        mentions,
+        actor.actor_type,
+    )
     targets = _chat_targets(
-        agents=await Agent.objects.filter_by(board_id=board.id).all(session),
+        agents=agents,
         mentions=mentions,
         actor=actor,
     )
     if not targets:
+        logger.warning("notify_chat: no targets for board %s", board.id)
         return
     actor_name = _actor_display_name(actor)
     snippet = memory.content.strip()
@@ -195,6 +208,7 @@ async def _notify_chat_targets(
     base_url = settings.base_url or "http://localhost:8000"
     for agent in targets.values():
         if not agent.openclaw_session_id:
+            logger.warning("notify_chat: agent %s has no session_id", agent.name)
             continue
         mentioned = matches_agent_mention(agent, mentions)
         header = "BOARD CHAT MENTION" if mentioned else "BOARD CHAT"
@@ -207,6 +221,11 @@ async def _notify_chat_targets(
             f"POST {base_url}/api/v1/agent/boards/{board.id}/memory\n"
             'Body: {"content":"...","tags":["chat"]}'
         )
+        logger.info(
+            "notify_chat: sending to agent=%s session=%s",
+            agent.name,
+            agent.openclaw_session_id,
+        )
         error = await dispatch.try_send_agent_message(
             session_key=agent.openclaw_session_id,
             config=config,
@@ -214,7 +233,9 @@ async def _notify_chat_targets(
             message=message,
         )
         if error is not None:
+            logger.warning("notify_chat: send failed agent=%s error=%s", agent.name, error)
             continue
+        logger.info("notify_chat: sent successfully to agent=%s", agent.name)
 
 
 @router.get("", response_model=DefaultLimitOffsetPage[BoardMemoryRead])
@@ -281,6 +302,7 @@ async def create_board_memory(
 ) -> BoardMemory:
     """Create a board memory entry and notify chat targets when needed."""
     is_chat = payload.tags is not None and "chat" in payload.tags
+    logger.info("create_board_memory: tags=%s is_chat=%s", payload.tags, is_chat)
     source = payload.source
     if is_chat and not source:
         if actor.actor_type == "agent" and actor.agent:
