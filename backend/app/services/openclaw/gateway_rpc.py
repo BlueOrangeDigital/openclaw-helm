@@ -459,11 +459,12 @@ async def openclaw_call(
             int((perf_counter() - started_at) * 1000),
         )
         return payload
-    except OpenClawGatewayError:
+    except OpenClawGatewayError as exc:
         logger.warning(
-            "gateway.rpc.call.gateway_error method=%s duration_ms=%s",
+            "gateway.rpc.call.gateway_error method=%s duration_ms=%s error=%s",
             method,
             int((perf_counter() - started_at) * 1000),
+            str(exc),
         )
         raise
     except (
