@@ -28,6 +28,7 @@ from app.models.board_memory import BoardMemory
 from app.schemas.board_memory import BoardMemoryCreate, BoardMemoryRead
 from app.schemas.pagination import DefaultLimitOffsetPage
 from app.services.mentions import extract_mentions, matches_agent_mention
+from app.services.slack.outbound import post_agent_response_to_slack
 from app.services.openclaw.gateway_dispatch import GatewayDispatchService
 from app.services.openclaw.gateway_rpc import GatewayConfig as GatewayClientConfig
 
@@ -303,4 +304,13 @@ async def create_board_memory(
             memory=memory,
             actor=actor,
         )
+        # Post agent chat responses to Slack if connected
+        if actor.actor_type == "agent" and actor.agent:
+            await post_agent_response_to_slack(
+                session,
+                board_id=board.id,
+                agent_name=actor.agent.name,
+                response_text=memory.content,
+                source="board",
+            )
     return memory
