@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.models.agents import Agent
 from app.models.boards import Board
 from app.models.gateways import Gateway
@@ -51,6 +52,8 @@ from app.services.openclaw.internal.session_keys import (
     board_lead_session_key,
 )
 from app.services.openclaw.shared import GatewayAgentIdentity
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from app.models.users import User
@@ -348,7 +351,10 @@ def _build_context(
     workspace_root = gateway.workspace_root
     workspace_path = _workspace_path(agent, workspace_root)
     session_key = agent.openclaw_session_id or ""
-    base_url = settings.base_url or "REPLACE_WITH_BASE_URL"
+    base_url = settings.base_url
+    if not base_url:
+        logger.warning("settings.base_url is empty — agent templates will render with placeholder URL")
+        base_url = "REPLACE_WITH_BASE_URL"
     main_session_key = GatewayAgentIdentity.session_key(gateway)
     identity_context = _identity_context(agent)
     user_context = _user_context(user)
@@ -389,7 +395,10 @@ def _build_main_context(
     auth_token: str,
     user: User | None,
 ) -> dict[str, str]:
-    base_url = settings.base_url or "REPLACE_WITH_BASE_URL"
+    base_url = settings.base_url
+    if not base_url:
+        logger.warning("settings.base_url is empty — agent templates will render with placeholder URL")
+        base_url = "REPLACE_WITH_BASE_URL"
     identity_context = _identity_context(agent)
     user_context = _user_context(user)
     return {
@@ -646,8 +655,15 @@ class OpenClawGatewayControlPlane(GatewayControlPlane):
         entry_by_id = _heartbeat_entry_map(entries)
         new_list = _updated_agent_list(raw_list, entry_by_id)
 
-        patch: dict[str, Any] = {"agents": {"list": new_list}}
         channels_patch = _channel_heartbeat_visibility_patch(config_data)
+
+        # Skip config.patch when nothing changed — avoids triggering
+        # a gateway SIGUSR1 restart for identical agent heartbeat config.
+        agents_changed = json.dumps(new_list, sort_keys=True) != json.dumps(raw_list, sort_keys=True)
+        if not agents_changed and channels_patch is None:
+            return
+
+        patch: dict[str, Any] = {"agents": {"list": new_list}}
         if channels_patch is not None:
             patch["channels"] = channels_patch
         params = {"raw": json.dumps(patch)}

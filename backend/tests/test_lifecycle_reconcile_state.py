@@ -49,5 +49,5 @@ def test_not_checked_in_since_wake_when_missing_last_seen() -> None:
 
 
 def test_lifecycle_convergence_policy_constants() -> None:
-    assert CHECKIN_DEADLINE_AFTER_WAKE == timedelta(seconds=30)
-    assert MAX_WAKE_ATTEMPTS_WITHOUT_CHECKIN == 3
+    assert CHECKIN_DEADLINE_AFTER_WAKE == timedelta(seconds=60)
+    assert MAX_WAKE_ATTEMPTS_WITHOUT_CHECKIN == 10
