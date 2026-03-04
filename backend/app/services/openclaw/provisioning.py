@@ -7,6 +7,7 @@ DB-backed workflows (template sync, lead-agent record creation) live in
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from abc import ABC, abstractmethod
@@ -569,6 +570,11 @@ class OpenClawGatewayControlPlane(GatewayControlPlane):
                 marker in message for marker in ("already", "exist", "duplicate", "conflict")
             ):
                 raise
+
+        # Gateway reloads config asynchronously after agents.create;
+        # agents.update will fail with "agent not found" if fired before reload completes.
+        await asyncio.sleep(2)
+
         await openclaw_call(
             "agents.update",
             {
